@@ -16,6 +16,7 @@ class MySQLDumpParser
     @fh = stream
     @buffer = ''
     @buffer_offset = 0
+    @buffer_chars_remaining = 0
 
     loop do
       fill_buffer!
@@ -52,7 +53,7 @@ class MySQLDumpParser
   end
 
   def looking_at?(s)
-    fill_buffer!(s.length)
+    fill_buffer! if @buffer_chars_remaining < s.length
 
     return false if @buffer.length < s.length
 
@@ -70,30 +71,28 @@ class MySQLDumpParser
   # Allow us to rewind even if we've just refilled the buffer
   BUFFER_OVERLAP = 1
 
-  def fill_buffer!(min_length = 1)
-    if (@buffer.length - @buffer_offset) < min_length
-      unless @buffer == ''
-        @buffer = @buffer[(@buffer_offset - BUFFER_OVERLAP)..-1]
-        @buffer_offset = BUFFER_OVERLAP
-      end
+  def fill_buffer!
+    unless @buffer == ''
+      @buffer = @buffer[(@buffer_offset - BUFFER_OVERLAP)..-1]
+      @buffer_offset = BUFFER_OVERLAP
+    end
 
-      next_input = @fh.read(BUFFER_SIZE - @buffer.length)
+    next_input = @fh.read(BUFFER_SIZE - @buffer.length)
 
-      @eof = true unless next_input
+    @eof = true unless next_input
 
-      unless @eof
-        @buffer += next_input
-      end
+    unless @eof
+      @buffer << next_input
+      @buffer_chars_remaining += next_input.length
     end
   end
 
   def readchar
-    fill_buffer!
-
-    raise 'EOF' unless @buffer.length > 0
+    fill_buffer! if @buffer_chars_remaining == 0
 
     ch = @buffer[@buffer_offset]
     @buffer_offset += 1
+    @buffer_chars_remaining -= 1
 
     ch
   end
@@ -112,17 +111,18 @@ class MySQLDumpParser
 
   def rewind(places)
     @buffer_offset -= places
+    @buffer_chars_remaining += places
+
     raise "Oops" unless @buffer_offset >= 0
   end
 
   def skip_over(delimiters)
     loop do
-      if @buffer_offset >= @buffer.length
-        fill_buffer!
-      end
+      fill_buffer! if @buffer_chars_remaining == 0
 
       if delimiters.include?(@buffer[@buffer_offset])
         @buffer_offset += 1
+        @buffer_chars_remaining -= 1
       else
         break
       end
@@ -150,19 +150,20 @@ class MySQLDumpParser
 
   def read_values
     loop do
-      # That's all values read
-      if looking_at?(';')
-        skip_over([';'])
+      ch = readchar
+
+      if ch == ';'
         skip_over(NEWLINES)
-
         return
+      elsif ch == ','
+        # Next set of values
+        # Skip the opening (
+        readchar
       end
-
-      skip_over(['('])
 
       values = []
 
-      while !looking_at?(')')
+      while true
         if looking_at?("'")
           values << read_mysql_string
         elsif looking_at?('NULL')
@@ -173,11 +174,15 @@ class MySQLDumpParser
           values << read_integer
         end
 
-        skip_over([','])
+        ch = readchar
+        if ch == ')'
+          break
+        elsif ch == ','
+          # comma!
+        else
+          raise "Parse error! Unexpected char: #{ch}"
+        end
       end
-
-      skip_over([')'])
-      skip_over([','])
 
       yield values
     end

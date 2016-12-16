@@ -25,27 +25,31 @@ class ObfuscatingParseHandler
   end
 
   def on_lock(statement)
-    puts statement + ";"
+    print statement, ";\n"
   end
 
   def on_unlock(statement)
-    puts statement + ";"
+    print statement, ";\n"
   end
 
   def on_drop_table(statement)
-    puts statement + ";"
+    print statement, ";\n"
   end
 
   def mysql_escape(s)
-    s.each_char.map {|ch|
+    (s.length - 1).downto(0).each do |i|
+      ch = s[i]
+
       if ch == '\\'
-        '\\\\'
+        s[i] = '\\\\'
       elsif ch == "'" || ch == '"'
-        '\\' + ch
+        s[i] = ('\\' << ch)
       else
-        ch
+        # Literal
       end
-    }.join('')
+    end
+
+    s
   end
 
   def on_insert(insert_into, values_enum)
@@ -89,7 +93,7 @@ class ObfuscatingParseHandler
             value = @scrambler.call(value)
           end
 
-          "'" + mysql_escape(value) + "'"
+          "'" << mysql_escape(value) << "'"
         elsif value.nil?
           "NULL"
         else
@@ -127,13 +131,13 @@ class ObfuscatingParseHandler
       end
 
       if notes['items']
-          notes['items'] = notes['items'].map {|item|
-            if item.is_a?(String)
-              @scrambler.call(item)
-            else
-              clean_notes(item)
-            end
-          }
+        notes['items'] = notes['items'].map {|item|
+          if item.is_a?(String)
+            @scrambler.call(item)
+          else
+            clean_notes(item)
+          end
+        }
       end
 
       ["actuate", "arcrole", "href", "role", "show", "title", "type", "value", "reference_text"].each do |attr|
