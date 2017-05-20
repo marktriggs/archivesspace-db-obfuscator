@@ -49,7 +49,7 @@ class MySQLDumpParser
   private
 
   def eof?
-    @eof
+    @eof && @buffer_chars_remaining == 0
   end
 
   def looking_at?(s)
