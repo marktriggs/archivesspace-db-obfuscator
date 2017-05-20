@@ -38,22 +38,13 @@ class ObfuscatingParseHandler
   end
 
   def mysql_escape(s)
-    i = s.length - 1
-    while i >= 0
-      ch = s[i]
+    escaped = s.clone
 
-      if ch == '\\'
-        s[i] = '\\\\'
-      elsif ch == "'" || ch == '"'
-        s[i] = ('\\' << ch)
-      else
-        # Literal
-      end
+    escaped.gsub!(/\\/, Regexp.quote('\\\\'))
+    escaped.gsub!(/'/, Regexp.quote("\\'"))
+    escaped.gsub!(/"/, Regexp.quote('\\"'))
 
-      i -= 1
-    end
-
-    s
+    escaped
   end
 
   UNSCRAMBLED_TABLE_COLUMNS = Set.new([
