@@ -38,7 +38,8 @@ class ObfuscatingParseHandler
   end
 
   def mysql_escape(s)
-    (s.length - 1).downto(0).each do |i|
+    i = s.length - 1
+    while i >= 0
       ch = s[i]
 
       if ch == '\\'
@@ -48,6 +49,8 @@ class ObfuscatingParseHandler
       else
         # Literal
       end
+
+      i -= 1
     end
 
     s
