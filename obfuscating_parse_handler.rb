@@ -1,4 +1,5 @@
 require_relative 'text_scrambler'
+require 'set'
 require 'json'
 
 class ObfuscatingParseHandler
@@ -52,6 +53,31 @@ class ObfuscatingParseHandler
     s
   end
 
+  UNSCRAMBLED_TABLE_COLUMNS = Set.new([
+                                        ['permission', 'permission_code'],
+                                        ['enumeration', 'name'],
+                                        ['enumeration_value', 'value'],
+                                        ['resource', 'identifier'],
+                                        ['accession', 'identifier'],
+                                        ['container', 'container_extent'],
+                                        ['container_profile', 'width'],
+                                        ['container_profile', 'depth'],
+                                        ['container_profile', 'height'],
+                                        ['container_profile', 'stacking_limit'],
+                                        ['user', 'agent_record_type'],
+                                        ['collection_management', 'processing_hours_per_foot_estimate'],
+                                        ['collection_management', 'processing_total_extent'],
+                                        ['collection_management', 'processing_hours_total'],
+                                        ['date', 'begin'],
+                                        ['date', 'end'],
+                                        ['subnote_metadata', 'guid'],
+                                      ])
+
+  UNSCRAMBLED_COLUMNS_ANY_TABLE = Set.new(['real_1', 'real_2', 'real_3', 'integer_1', 'integer_2', 'integer_3',
+                                           'jsonmodel_type'])
+
+  UNSCRAMBLED_DATA_TYPES = Set.new(['datetime', 'date', 'timestamp'])
+
   def on_insert(insert_into, values_enum)
     table = if insert_into =~ /INSERT INTO `(.*?)`/
               $1
@@ -76,21 +102,16 @@ class ObfuscatingParseHandler
           elsif table == 'auth_db' && this_column.name.downcase == 'pwhash'
             # password is always 'admin'
             value = '$2a$10$bq/XuojTCE1UtnAEiU5Mkux0lEAKXa9yl/d4.h3CcZB/hNWDeGJPe'
-          elsif !(table == 'permission' && this_column.name.downcase == 'permission_code') &&
-                !(table == 'enumeration' && this_column.name.downcase == 'name') &&
-                !(table == 'enumeration_value' && this_column.name.downcase == 'value') &&
-                !(table == 'resource' && this_column.name.downcase == 'identifier') &&
-                !(table == 'accession' && this_column.name.downcase == 'identifier') &&
-                !(table == 'container' && this_column.name.downcase == 'container_extent') &&
-                !(table == 'container_profile' && ['width', 'depth', 'height', 'stacking_limit'].include?(this_column.name.downcase)) &&
-                !(table == 'user' && ['agent_record_type'].include?(this_column.name.downcase)) &&
-                !(table == 'collection_management' && ['processing_hours_per_foot_estimate', 'processing_total_extent', 'processing_hours_total'].include?(this_column.name.downcase)) &&
-                !(['real_1', 'real_2', 'real_2', 'integer_1', 'integer_2', 'integer_3'].include?(this_column.name.downcase)) &&
-                !(table == 'date' && ['begin', 'end'].include?(this_column.name.downcase)) &&
-                !(table == 'subnote_metadata' && this_column.name.downcase == 'guid') &&
-                !(this_column.name.downcase == 'jsonmodel_type') &&
-                !['datetime', 'date', 'timestamp'].include?(this_column.type.downcase)
-            value = @scrambler.call(value)
+          else
+            normalised_column = this_column.name.downcase
+
+            if UNSCRAMBLED_TABLE_COLUMNS.include?([table, normalised_column]) ||
+               UNSCRAMBLED_COLUMNS_ANY_TABLE.include?(normalised_column) ||
+               UNSCRAMBLED_DATA_TYPES.include?(this_column.type.downcase)
+            # Don't scramble
+            else
+              value = @scrambler.call(value)
+            end
           end
 
           "'" << mysql_escape(value) << "'"
