@@ -171,7 +171,7 @@ class MySQLDumpParser
 
           4.times {|_| readchar }
         else
-          values << read_integer
+          values << read_number
         end
 
         ch = readchar
@@ -206,16 +206,20 @@ class MySQLDumpParser
     result
   end
 
-  def read_integer
+  def read_number
     result = ''
 
-    while (ch = readchar) =~ /[-0-9]/
+    while (ch = readchar) =~ /[-0-9\.]/
       result << ch
     end
 
     rewind(1)
 
-    Integer(result)
+    if result.include?('.')
+      Float(result)
+    else
+      Integer(result)
+    end
   end
 
   def read_column_definitions
