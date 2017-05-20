@@ -65,6 +65,8 @@ class ObfuscatingParseHandler
                                         ['date', 'begin'],
                                         ['date', 'end'],
                                         ['subnote_metadata', 'guid'],
+                                        ['system_event', 'title'],
+                                        ['system_event', 'message'],
                                       ])
 
   UNSCRAMBLED_COLUMNS_ANY_TABLE = Set.new(['real_1', 'real_2', 'real_3', 'integer_1', 'integer_2', 'integer_3',
