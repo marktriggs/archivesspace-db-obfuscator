@@ -3,7 +3,7 @@ ConstraintDefinition = Struct.new(:value)
 
 class MySQLDumpParser
 
-  BUFFER_SIZE = 4096
+  BUFFER_SIZE = 10240
   NEWLINES = ["\n", "\r"]
 
 
