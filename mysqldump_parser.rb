@@ -178,6 +178,8 @@ class MySQLDumpParser
           values << nil
 
           4.times {|_| readchar }
+        elsif looking_at?('0x')
+          values << read_and_decode_blob
         else
           values << read_number
         end
@@ -228,6 +230,22 @@ class MySQLDumpParser
 
     result
   end
+
+  def read_and_decode_blob
+    # Skip 0x
+    2.times { readchar }
+
+    result = ''
+
+    while (ch = readchar) =~ /[0-9A-F]/
+      result << ch
+    end
+
+    rewind(1)
+
+    [result].pack('H*')
+  end
+
 
   def read_number
     result = ''
