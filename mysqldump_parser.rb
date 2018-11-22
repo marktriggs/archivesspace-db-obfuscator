@@ -205,7 +205,22 @@ class MySQLDumpParser
     while (ch = readchar) != "'"
       if ch == '\\'
         # Escaped character
-        result << readchar
+        escaped = readchar
+
+        case escaped
+            when 'n'
+              result << "\n"
+            when 'r'
+              result << "\r"
+            when 'b'
+              result << "\b"
+            when 't'
+              result << "\t"
+            when 'Z'
+              result << "\Z"
+            else
+              result << escaped
+        end
       else
         result << ch
       end
