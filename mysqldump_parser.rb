@@ -18,6 +18,8 @@ class MySQLDumpParser
     @buffer_offset = 0
     @buffer_chars_remaining = 0
 
+    @current_position = 0
+
     loop do
       fill_buffer!
 
@@ -41,7 +43,7 @@ class MySQLDumpParser
       elsif looking_at?('INSERT ')
         read_insert
       else
-        raise "Unknown input: #{@buffer[@buffer_offset..@buffer_offset + 70].inspect}"
+        raise "Unknown input at offset {@current_position}: #{@buffer[@buffer_offset..@buffer_offset + 70].inspect}"
       end
     end
   end
@@ -94,6 +96,8 @@ class MySQLDumpParser
     @buffer_offset += 1
     @buffer_chars_remaining -= 1
 
+    @current_position += 1
+
     ch
   end
 
@@ -113,6 +117,8 @@ class MySQLDumpParser
     @buffer_offset -= places
     @buffer_chars_remaining += places
 
+    @current_position -= places
+
     raise "Oops" unless @buffer_offset >= 0
   end
 
@@ -123,6 +129,8 @@ class MySQLDumpParser
       if delimiters.include?(@buffer[@buffer_offset])
         @buffer_offset += 1
         @buffer_chars_remaining -= 1
+
+        @current_position += 1
       else
         break
       end
@@ -180,7 +188,7 @@ class MySQLDumpParser
         elsif ch == ','
           # comma!
         else
-          raise "Parse error! Unexpected char: #{ch}"
+          raise "Parse error! Unexpected char: #{ch} at offset #{@current_position}"
         end
       end
 
